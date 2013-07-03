@@ -1,0 +1,106 @@
+#!/usr/bin/env ruby
+
+require 'csv'
+require 'noodile'
+require 'zip/zip'
+require 'time'
+
+options = NoodileOptionParser.parse(ARGV)
+infile  = ARGV[0]
+Dir.mkdir(options.output_dir) unless Dir.exists?(options.output_dir)
+
+count    = 0
+fields   = nil
+outfiles = {}
+
+start = Time.new
+
+CSV.foreach(infile) do |line|
+  if count == 0 then
+    fields = Fields.new line
+  else
+    l = Loan.new line, fields, options.purge_postcodes
+
+    filename = "complete"
+    if not options.split_by
+      if options.purge_postcodes
+        filename = "%s.%s" % [
+            filename,
+            "no.postcodes"
+        ]
+      end
+      filename = "%s.csv" % [
+          filename
+      ]
+
+      if not outfiles["complete"] then
+        outfiles["complete"] = File.open "%s/%s" % [
+            options.output_dir,
+            filename
+        ],                               "w"
+
+        fields.path = outfiles["complete"]
+        fields.write options.purge_postcodes
+
+      end
+    else
+      filename = "by.%s.%s.csv" % [
+          options.split_by,
+          l[options.split_by].gsub(" ", "_").downcase
+      ]
+      if not outfiles[l[options.split_by]] then
+        outfiles[l[options.split_by]] = File.open "%s/%s" % [
+            options.output_dir,
+            filename
+        ],                                        "w"
+
+        fields.path = outfiles[l[options.split_by]]
+        fields.write options.purge_postcodes
+
+      end
+    end
+
+    if outfiles["complete"] then
+      l.path = outfiles["complete"]
+    else
+      l.path = outfiles[l[options.split_by]]
+    end
+    l.write
+
+  end
+
+  if options.progress
+    if count % 1000 == 0 then
+      print "."
+    end
+  end
+  count = count + 1
+end
+
+puts
+
+outfiles.each_value do |v|
+  v.close
+end
+
+if options.zip then
+
+  outfiles.each_value do |v|
+    input_filename = v.path.split("/")[-1]
+    zipfile_name   = "%s.zip" % [
+        v.path
+    ]
+
+    Zip::ZipFile.open(zipfile_name, Zip::ZipFile::CREATE) do |zipfile|
+      zipfile.add(input_filename, v.path)
+    end
+    File.unlink v.path
+  end
+end
+
+if options.progress then
+  puts "Processed %d lines in %d seconds" % [
+      count,
+      (Time.new - start)
+  ]
+end

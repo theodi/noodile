@@ -7,6 +7,11 @@ require 'time'
 
 options = NoodileOptionParser.parse(ARGV)
 infile  = ARGV[0]
+
+if not infile
+  # need the whole optparse object here
+end
+
 Dir.mkdir(options.output_dir) unless Dir.exists?(options.output_dir)
 
 count    = 0

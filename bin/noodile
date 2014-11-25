@@ -2,8 +2,8 @@
 
 require 'csv'
 require 'noodile'
-require 'zip/zip'
 require 'time'
+require 'zip'
 
 options = NoodileOptionParser.parse(ARGV)
 infile  = ARGV[0]
@@ -96,7 +96,7 @@ if options.zip then
         v.path
     ]
 
-    Zip::ZipFile.open(zipfile_name, Zip::ZipFile::CREATE) do |zipfile|
+    Zip::File.open(zipfile_name, Zip::File::CREATE) do |zipfile|
       zipfile.add(input_filename, v.path)
     end
     File.unlink v.path
